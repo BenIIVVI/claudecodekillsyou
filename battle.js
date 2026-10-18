@@ -123,7 +123,7 @@
         acts: [['Duck', '* You duck.\n* It adjusts.'], ['Plead', '* You ask it to stop.\n* "noted."']] },
       // generated: a new wall of CAPTCHA tiles every run
       6: { name: 'CAPTCHA WALL', hp: 1, arcade: 'breakout',
-        intro: `* ${MODEL} hides behind a wall of CAPTCHAs.\n* Break through. Hit its eye 3 times.\n* (Arrows or the mouse move you.)` },
+        intro: `* ${MODEL} hides behind a wall of CAPTCHAs.\n* Break through. Hit its eye twice.\n* (Arrows or the mouse move you.)` },
       7: { name: 'RED LIGHT', hp: 20, box: [260, 160], attack: 'redlight',
         intro: '* RED LIGHT, GREEN LIGHT.\n* Don\'t move while it\'s looking.',
         lines: ['green light.', 'red light.', 'i saw that.'],
@@ -1452,27 +1452,27 @@
           const R = A.R;
           A.bricks = [];
           const cols = 10;
-          const rows = 4;
+          const rows = 2; // a short wall: two gappy rows in front of its eye
           const bw = 52;
           const bh = 20;
           const ox = (VW - (cols * (bw + 4) - 4)) / 2;
           for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols / 2; c++) {
               const t = R();
-              const core = c === 4 && r >= 1 && r <= 2;
-              const type = core ? 'armor' : t < 0.26 ? null : t < 0.42 ? 'armor' : t < 0.52 ? 'eye' : 'tile';
+              const core = c === 4 && r === 1;
+              const type = core ? 'tile' : t < 0.4 ? null : t < 0.5 ? 'armor' : t < 0.6 ? 'eye' : 'tile';
               if (!type) continue;
               const hue = (R() * 40 + 10) | 0;
-              for (const cc of [c, cols - 1 - c]) A.bricks.push({ x: ox + cc * (bw + 4), y: 50 + r * (bh + 4), w: bw, h: bh, hp: type === 'armor' ? 2 : 1, type, hue });
+              for (const cc of [c, cols - 1 - c]) A.bricks.push({ x: ox + cc * (bw + 4), y: 132 + r * (bh + 4), w: bw, h: bh, hp: type === 'armor' ? 2 : 1, type, hue });
             }
           }
-          A.eye = { x: VW / 2, y: 104, r: 26, hp: 3, hurt: 0 };
+          A.eye = { x: VW / 2, y: 82, r: 32, hp: 2, hurt: 0 };
           A.combo = 0;
           A.pierce = 0;
-          A.pad = { x: VW / 2, y: 350, w: 100 };
-          A.ball = { x: VW / 2, y: 340, vx: 0, vy: 0, r: 5, stuck: true, auto: 1.2 };
+          A.pad = { x: VW / 2, y: 350, w: 112 };
+          A.ball = { x: VW / 2, y: 340, vx: 0, vy: 0, r: 7, stuck: true, auto: 0.8 };
           A.shots = [];
-          A.fire = 2.4;
+          A.fire = 3.5;
         },
         hitRect(b, k) {
           const nx = clamp(b.x, k.x, k.x + k.w);
@@ -1491,11 +1491,11 @@
           if (b.stuck) {
             b.x = pad.x;
             b.y = pad.y - 10;
-            if (A.jumpReq || (b.auto -= dt) <= 0) {
+            if (A.jumpReq) { // you launch it (Space / Z / click): it never plays itself
               b.stuck = false;
-              const ang = -Math.PI / 2 + (A.R() - 0.5) * 0.8;
-              b.vx = Math.cos(ang) * 330;
-              b.vy = Math.sin(ang) * 330;
+              const ang = -Math.PI / 2 + (A.R() < 0.5 ? -1 : 1) * (0.35 + A.R() * 0.4);
+              b.vx = Math.cos(ang) * 400;
+              b.vy = Math.sin(ang) * 400;
             }
           } else {
             for (let i = 0; i < 3; i++) {
@@ -1517,8 +1517,8 @@
                 else if (ox < oy) b.vx *= -1;
                 else b.vy *= -1;
                 k.hp--;
-                if (k.hp <= 0 && ++A.combo === 4 && A.pierce <= 0) {
-                  A.pierce = 2.5;
+                if (k.hp <= 0 && ++A.combo === 2 && A.pierce <= 0) {
+                  A.pierce = 3.5;
                   S.banner = { text: 'PIERCE!', sub: '', t: 1.2 };
                   snd.chime();
                 }
@@ -1554,7 +1554,7 @@
               // the paddle
               if (b.vy > 0 && b.y + b.r >= pad.y - 5 && b.y < pad.y + 6 && Math.abs(b.x - pad.x) < pad.w / 2 + b.r) {
                 const off = clamp((b.x - pad.x) / (pad.w / 2), -1, 1);
-                const sp = Math.min(460, Math.hypot(b.vx, b.vy) * 1.025);
+                const sp = Math.min(520, Math.hypot(b.vx, b.vy) * 1.03);
                 A.combo = 0;
                 const ang = -Math.PI / 2 + off * 1.05;
                 b.vx = Math.cos(ang) * sp;
@@ -1572,11 +1572,13 @@
             }
           }
           A.jumpReq = false;
+          // its eye drifts side to side behind the wall: aim with where the ball hits your paddle
+          A.eye.x = VW / 2 + Math.sin(A.t * 0.8) * 170;
           A.pierce = Math.max(0, A.pierce - dt);
           A.eye.hurt = Math.max(0, A.eye.hurt - dt);
           // it shoots at you, faster each time you hurt it
           if ((A.fire -= dt) <= 0) {
-            A.fire = 3 - (3 - A.eye.hp) * 0.4;
+            A.fire = 3.6 - (2 - A.eye.hp) * 0.5;
             // it drops sparks from its eye, drifting a little toward where you were
             const vx = clamp((pad.x - A.eye.x) * 0.3, -70, 70) + (A.R() - 0.5) * 40;
             A.shots.push({ x: A.eye.x, y: A.eye.y + 24, vx, vy: 140, r: 6 });
@@ -1599,10 +1601,10 @@
           ctx.fillStyle = '#4a90e2';
           ctx.fillRect(20, 8, VW - 40, 24);
           txt(`Select all squares with ${MODEL}`, 32, 15, 9, '#fff');
-          txt('●'.repeat(A.eye.hp) + '○'.repeat(3 - A.eye.hp), VW - 32, 14, 10, '#fff', 'right');
+          txt('●'.repeat(A.eye.hp) + '○'.repeat(2 - A.eye.hp), VW - 32, 14, 10, '#fff', 'right');
           // its eye, behind the wall, watching the ball
           const e = A.eye;
-          if (Art) Art.drawEvilSpark(ctx, e.x + (e.hurt > 0 ? rnd(-5, 5) : 0), e.y, 92, { look: clamp((A.ball.x - e.x) / 160, -1, 1), rotate: S.t * 0.3 });
+          if (Art) Art.drawEvilSpark(ctx, e.x + (e.hurt > 0 ? rnd(-5, 5) : 0), e.y, 112, { look: clamp((A.ball.x - e.x) / 160, -1, 1), rotate: S.t * 0.3 });
           for (const k of A.bricks) {
             if (k.hp <= 0) continue;
             ctx.fillStyle = k.type === 'armor' ? '#2a3d55' : `hsl(${k.hue},12%,${26 + k.hue / 4}%)`;
