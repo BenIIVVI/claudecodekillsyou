@@ -24,7 +24,7 @@
 
 3. Open http://localhost:5177 in Chrome.
 
-4. Type your name in **Full name**, then click **I'm not a robot**.
+4. Type your name in **Full name**. The CAPTCHA opens by itself a moment after you stop typing (or press Enter). If nobody types, it opens on its own after about 5 seconds.
 
 5. Allow the camera and screen share when asked. For screen share, choose **Entire screen**.
 

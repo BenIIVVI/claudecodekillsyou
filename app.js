@@ -1376,6 +1376,31 @@
     openChallenge();
   });
 
+  // The CAPTCHA starts by itself: a moment after you finish typing your name (or on Enter), or, if
+  // nobody types, the checkbox clicks itself a few seconds after the page loads.
+  const autoStart = () => {
+    if (S.stage === 0 && !S.open && !S.busy && !autoStart.done) {
+      autoStart.done = true;
+      el.cb.click();
+    }
+  };
+  let typedT = 0;
+  el.name.addEventListener('input', () => {
+    clearTimeout(typedT);
+    if (nameValue().length >= 2) typedT = setTimeout(autoStart, 1200);
+  });
+  el.name.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && nameValue()) {
+      clearTimeout(typedT);
+      autoStart();
+    }
+  });
+  setTimeout(function idle() {
+    // still typing (or about to): wait for them instead
+    if (document.activeElement === el.name || nameValue()) return;
+    autoStart();
+  }, 5000);
+
   el.veil.addEventListener('click', () => {
     if (S.busy || S.stage >= 6) return;
     closeChallenge();
