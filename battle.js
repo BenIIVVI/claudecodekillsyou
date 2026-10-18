@@ -498,7 +498,7 @@
       } },
       // the end: the box closes in, everything at once, and then there is no room left
       final: { dur: 99, init(a) { a.next = 0; a.k = 0; }, update(a, dt) {
-        a.k += dt;
+        a.k += dt * (opts.short ? 2.2 : 1); // the demo closes the box faster
         const w = Math.max(28, 200 - a.k * 26);
         setBox(w, Math.max(28, 160 - a.k * 20));
         a.next -= dt;
@@ -844,7 +844,7 @@
           A.coyote = 0;
           A.buf = 0;
           A.scroll = 0;
-          A.len = opts.short ? 2600 : 4400;
+          A.len = opts.short ? 2400 : 4400;
           A.eye = 70; // its screen x; it catches you at A.px - 46
           A.obs = [];
           A.pits = [];
@@ -1310,7 +1310,7 @@
           }
         },
         update(A, dt) {
-          const sp = (opts.short ? 140 : 112) * dt;
+          const sp = (opts.short ? 220 : 112) * dt;
           let mx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0);
           let my = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
           if (opts.short) {
@@ -1797,10 +1797,10 @@
     // ?short autopilot: reads its own text, picks FIGHT, times the bar, and plays the arcade levels
     function autopilot(dt) {
       const since = S.t - (S.autoT || 0);
-      if (S.state === 'text' && S.shown >= S.text.length && since > 1.1) {
+      if (S.state === 'text' && S.shown >= S.text.length && since > (opts.short ? 0.6 : 1.1)) {
         S.autoT = S.t;
         confirm();
-      } else if (S.state === 'menu' && !S.sub && since > 0.9) {
+      } else if (S.state === 'menu' && !S.sub && since > 0.5) {
         S.autoT = S.t;
         S.menu = 0;
         confirm();
