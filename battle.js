@@ -847,41 +847,76 @@
           A.pits = [];
           A.spits = [];
           A.spitIn = 2;
+          A.blocks = []; // solid: land on top, don't run into the side
+          A.pads = []; // yellow pads: launch you high
+          A.orbs = []; // yellow rings in the air: tap jump while touching one to jump again
           A.racks = Array.from({ length: 26 }, (_, i) => ({ x: i * 90 + R() * 40, w: 40 + R() * 40, h: 60 + R() * 120 }));
           let x = 620;
           while (x < A.len - 320) {
             const p = x / A.len;
             const t = R();
             let gap = 140 + R() * 95 - 40 * p;
-            if (t < 0.22) A.obs.push({ x, y: A.ground - 10, r: 10 });
-            else if (t < 0.36) {
+            if (t < 0.16) A.obs.push({ x, y: A.ground - 10, r: 10 });
+            else if (t < 0.26) {
               // a stack of two, or three later on (hold the jump)
               const n = p > 0.35 && R() < 0.5 ? 3 : 2;
               for (let i = 0; i < n; i++) A.obs.push({ x, y: A.ground - 10 - i * 21, r: 10 });
-            } else if (t < 0.56) {
+            } else if (t < 0.38) {
               const w = 60 + R() * (45 + 55 * p);
               A.pits.push({ x, w });
               x += w;
-            } else if (t < 0.68) {
+            } else if (t < 0.45) {
               // a low flier: don't jump into it
               A.obs.push({ x, y: A.ground - 54, r: 9, fly: true });
               gap += 90;
-            } else if (t < 0.8) {
+            } else if (t < 0.52) {
               // a spark that bobs up and down: time it
               A.obs.push({ x, y: A.ground - 40, r: 10, bob: { base: A.ground - 40, amp: 30, ph: R() * 6.28 } });
               gap += 60;
-            } else if (t < 0.9) {
+            } else if (t < 0.58) {
               // a long one: jump early
               A.obs.push({ x, y: A.ground - 10, r: 10 });
               A.obs.push({ x: x + 34, y: A.ground - 10, r: 10 });
               A.obs.push({ x: x + 68, y: A.ground - 10, r: 10 });
               x += 68;
-            } else {
+            } else if (t < 0.63) {
               // a pit with a spark right after it
               const w = 55 + R() * 35;
               A.pits.push({ x, w });
               A.obs.push({ x: x + w + 95, y: A.ground - 10, r: 10 });
               x += w + 95;
+              gap += 40;
+            } else if (t < 0.71) {
+              // a block: jump on, run across, drop off
+              const n = 1 + ((R() * 3) | 0);
+              A.blocks.push({ x, w: 34 * n, h: 34 });
+              x += 34 * n;
+              gap += 30;
+            } else if (t < 0.78) {
+              // stairs: up one, up two
+              A.blocks.push({ x, w: 34, h: 32 });
+              A.blocks.push({ x: x + 34, w: 34 + ((R() * 2) | 0) * 34, h: 64 });
+              x += 102;
+              gap += 40;
+            } else if (t < 0.85) {
+              // a raised platform with a spark sitting on it
+              const w = 150 + R() * 60;
+              A.blocks.push({ x, w, h: 40 });
+              A.obs.push({ x: x + w * (0.45 + R() * 0.15), y: A.ground - 50, r: 10 });
+              x += w;
+              gap += 40;
+            } else if (t < 0.93) {
+              // a jump pad, then a wall too tall to jump without it
+              A.pads.push({ x });
+              A.blocks.push({ x: x + 150, w: 34, h: 120 });
+              x += 184;
+              gap += 60;
+            } else {
+              // a pit too wide for one jump, with a jump orb over the middle
+              const w = 290 + R() * 40;
+              A.pits.push({ x, w });
+              A.orbs.push({ x: x + w * 0.46, y: A.ground - 108 });
+              x += w;
               gap += 40;
             }
             x += Math.max(130, gap);
@@ -889,7 +924,8 @@
         },
         // nothing in the way for the next stretch? (it only spits when you could fairly jump it)
         clear(A, from, to) {
-          return !A.obs.some((o) => o.x > from && o.x < to) && !A.pits.some((q) => q.x + q.w > from && q.x < to);
+          return !A.obs.some((o) => o.x > from && o.x < to) && !A.pits.some((q) => q.x + q.w > from && q.x < to) &&
+            !A.blocks.some((b) => b.x + b.w > from && b.x < to) && !A.pads.some((d) => d.x > from && d.x < to);
         },
         update(A, dt) {
           const p = A.scroll / A.len;
@@ -902,30 +938,74 @@
           }
           A.buf = Math.max(0, A.buf - dt);
           A.coyote = A.onGround ? 0.09 : Math.max(0, A.coyote - dt);
-          if (A.buf > 0 && (A.onGround || A.coyote > 0)) {
-            A.vy = -575;
-            A.onGround = false;
-            A.coyote = 0;
-            A.buf = 0;
-            snd.select();
-          }
-          if (!held && A.vy < -220) A.vy = -220; // let go early for a short hop
-          A.vy += 1500 * dt;
-          A.py += A.vy * dt;
-          const wx = A.scroll + A.px;
-          const overPit = A.pits.some((q) => wx > q.x + 6 && wx < q.x + q.w - 6);
-          if (!overPit && A.py >= A.ground - 8 && A.py < A.ground + 4) {
-            A.py = A.ground - 8;
-            A.vy = 0;
-            A.onGround = true;
-          } else A.onGround = false;
-          soul.x = A.px;
-          soul.y = A.py;
           const trip = (dmg, push) => {
             hurt(dmg);
             A.eye += push;
             A.lunge = 0.35;
           };
+          const wx = A.scroll + A.px;
+          if (A.buf > 0 && (A.onGround || A.coyote > 0)) {
+            A.vy = -575;
+            A.onGround = false;
+            A.coyote = 0;
+            A.buf = 0;
+            A.boost = false;
+            snd.select();
+          } else if (A.buf > 0) {
+            // a jump orb: tap while touching it to jump again in mid-air
+            const orb = A.orbs.find((o) => !o.used && Math.abs(o.x - wx) < 30 && Math.abs(o.y - A.py) < 46);
+            if (orb) {
+              orb.used = true;
+              orb.flash = 0.3;
+              A.vy = -600;
+              A.buf = 0;
+              A.boost = false;
+              snd.chime();
+            }
+          }
+          if (!held && !A.boost && A.vy < -220) A.vy = -220; // let go early for a short hop (pads ignore this)
+          if (A.vy >= 0) A.boost = false;
+          const prevBottom = A.py + 8;
+          A.vy += 1500 * dt;
+          A.py += A.vy * dt;
+          const bottom = A.py + 8;
+          // what's under you: the floor (unless it's a pit) or the top of a block
+          let land = null;
+          for (const b of A.blocks) {
+            if (wx + 6 < b.x || wx - 6 > b.x + b.w) continue;
+            const top = A.ground - b.h;
+            if (A.vy >= 0 && prevBottom <= top + 3 && bottom >= top) land = land == null ? top : Math.min(land, top);
+            else if (bottom > top + 10) {
+              // ran into its side: it hurts, and you're lifted onto it so the run goes on
+              if (!b.bumped) {
+                b.bumped = true;
+                if (soul.inv <= 0) trip(4, 55);
+              }
+              land = land == null ? top : Math.min(land, top);
+            }
+          }
+          const overPit = A.pits.some((q) => wx > q.x + 6 && wx < q.x + q.w - 6);
+          if (land == null && !overPit && A.py >= A.ground - 8 && A.py < A.ground + 4) land = A.ground;
+          if (land != null) {
+            A.py = land - 8;
+            A.vy = 0;
+            A.onGround = true;
+          } else A.onGround = false;
+          // a jump pad: launches you high
+          if (A.onGround && land === A.ground) {
+            const pad = A.pads.find((d) => Math.abs(d.x - wx) < 16);
+            if (pad) {
+              A.vy = -800;
+              A.onGround = false;
+              A.boost = true;
+              pad.flash = 0.3;
+              snd.chime();
+            }
+          }
+          for (const o of A.orbs) o.flash = Math.max(0, (o.flash || 0) - dt);
+          for (const d of A.pads) d.flash = Math.max(0, (d.flash || 0) - dt);
+          soul.x = A.px;
+          soul.y = A.py;
           // fell in: it costs you, and it gets closer
           if (A.py > A.ground + 70) {
             soul.inv = 0;
@@ -1004,6 +1084,59 @@
             ctx.fillRect(sx + q.w / 2 - 8, A.ground + 22, 3, 2);
             ctx.fillRect(sx + q.w / 2 + 5, A.ground + 22, 3, 2);
           }
+          // blocks: dark squares with a glowing edge, Geometry Dash style
+          for (const b of A.blocks) {
+            const sx = b.x - A.scroll;
+            if (sx > VW || sx + b.w < 0) continue;
+            const top = A.ground - b.h;
+            ctx.fillStyle = '#24140f';
+            ctx.fillRect(sx, top, b.w, b.h);
+            ctx.strokeStyle = ORANGE;
+            ctx.lineWidth = 2;
+            for (let cx = 0; cx < b.w - 1; cx += 34) {
+              for (let cy = 0; cy < b.h - 1; cy += 34) {
+                const w = Math.min(34, b.w - cx);
+                const h = Math.min(34, b.h - cy);
+                ctx.strokeRect(sx + cx + 1, top + cy + 1, w - 2, h - 2);
+                ctx.strokeStyle = 'rgba(217,119,87,0.35)';
+                ctx.strokeRect(sx + cx + 8, top + cy + 8, Math.max(2, w - 16), Math.max(2, h - 16));
+                ctx.strokeStyle = ORANGE;
+              }
+            }
+          }
+          // jump pads
+          for (const d of A.pads) {
+            const sx = d.x - A.scroll;
+            if (sx < -30 || sx > VW + 30) continue;
+            ctx.fillStyle = d.flash > 0 ? '#fff' : '#ffd400';
+            ctx.beginPath();
+            ctx.ellipse(sx, A.ground, 16, 8, 0, Math.PI, 0);
+            ctx.fill();
+            ctx.fillStyle = `rgba(255,212,0,${0.25 + Math.sin(S.t * 8) * 0.15})`;
+            ctx.fillRect(sx - 10, A.ground - 40, 20, 32);
+          }
+          // jump orbs
+          for (const o of A.orbs) {
+            const sx = o.x - A.scroll;
+            if (sx < -30 || sx > VW + 30) continue;
+            const pulse = 1 + Math.sin(S.t * 6) * 0.12;
+            ctx.strokeStyle = o.used ? 'rgba(255,212,0,0.3)' : o.flash > 0 ? '#fff' : '#ffd400';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(sx, o.y, 11, 0, Math.PI * 2);
+            ctx.stroke();
+            if (!o.used) {
+              ctx.lineWidth = 1;
+              ctx.strokeStyle = 'rgba(255,212,0,0.5)';
+              ctx.beginPath();
+              ctx.arc(sx, o.y, 17 * pulse, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.fillStyle = '#ffd400';
+              ctx.beginPath();
+              ctx.arc(sx, o.y, 5, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
           for (const o of A.obs) {
             const sx = o.x - A.scroll;
             if (!o.hit && sx > -30 && sx < VW + 30) drawSpark(sx, o.y, o.r, clamp((A.px - sx) / 120, -1, 1));
@@ -1057,10 +1190,11 @@
       maze: {
         init(A) {
           const R = A.R;
-          const C = 17;
-          const Rw = 10;
-          const cs = 32;
-          Object.assign(A, { C, Rw, cs, ox: (VW - C * cs) / 2, oy: 40, got: 0 });
+          // small: 11 x 7 cells, wide corridors
+          const C = 11;
+          const Rw = 7;
+          const cs = 40;
+          Object.assign(A, { C, Rw, cs, ox: (VW - C * cs) / 2, oy: 48, got: 0 });
           const W = Array.from({ length: C }, () => Array.from({ length: Rw }, () => ({ n: 1, s: 1, e: 1, w: 1 })));
           const DIRS = [['n', 0, -1, 's'], ['s', 0, 1, 'n'], ['e', 1, 0, 'w'], ['w', -1, 0, 'e']];
           const seen = new Set(['0,0']);
@@ -1079,7 +1213,7 @@
             stack.push([c + dc, r + dr]);
           }
           // knock out a few extra walls: loops let you circle away from it
-          for (let i = 0; i < 24; i++) {
+          for (let i = 0; i < 10; i++) {
             const c = 1 + ((R() * (C - 2)) | 0);
             const r = 1 + ((R() * (Rw - 2)) | 0);
             const [d, dc, dr, back] = DIRS[(R() * 4) | 0];
@@ -1096,12 +1230,17 @@
           A.tiles = [];
           for (const cell of cells.slice(1).sort(() => R() - 0.5)) {
             if (A.tiles.length >= 3) break;
-            if (cell[2] < 7) continue;
-            if (A.tiles.every((t) => Math.abs(t[0] - cell[0]) + Math.abs(t[1] - cell[1]) >= 5) && Math.abs(A.exit[0] - cell[0]) + Math.abs(A.exit[1] - cell[1]) >= 4) A.tiles.push(cell);
+            if (cell[2] < 5) continue;
+            if (A.tiles.every((t) => Math.abs(t[0] - cell[0]) + Math.abs(t[1] - cell[1]) >= 4) && Math.abs(A.exit[0] - cell[0]) + Math.abs(A.exit[1] - cell[1]) >= 3) A.tiles.push(cell);
+          }
+          // never fewer than 3 tiles: if the spread-out rule couldn't place them all, relax it
+          for (const cell of cells.slice(1)) {
+            if (A.tiles.length >= 3) break;
+            if (cell[2] >= 2 && !A.tiles.includes(cell)) A.tiles.push(cell);
           }
           A.px = A.ox + cs / 2;
           A.py = A.oy + cs / 2;
-          const far = cells.filter((c) => c[2] >= 10 && c !== A.exit);
+          const far = cells.filter((c) => c[2] >= 7 && c !== A.exit);
           const h = far[(R() * far.length) | 0] || cells[2];
           A.hx = A.ox + h[0] * cs + cs / 2;
           A.hy = A.oy + h[1] * cs + cs / 2;
@@ -1232,7 +1371,7 @@
               // it lets go, and slips away to somewhere far
               const { dist } = this.bfs(A, pc[0], pc[1]);
               const far = [];
-              for (let c = 0; c < A.C; c++) for (let r = 0; r < A.Rw; r++) if (dist[c][r] >= 9) far.push([c, r]);
+              for (let c = 0; c < A.C; c++) for (let r = 0; r < A.Rw; r++) if (dist[c][r] >= 6) far.push([c, r]);
               const h = far[(A.R() * far.length) | 0] || [A.C - 1, 0];
               A.hx = A.ox + h[0] * A.cs + A.cs / 2;
               A.hy = A.oy + h[1] * A.cs + A.cs / 2;
@@ -1240,7 +1379,7 @@
             }
           }
           // your heartbeat tells you how close it is
-          const near = A.wake > 0 || A.dist == null ? 0 : A.dist <= 3 ? 140 : A.dist <= 7 ? 95 : 0;
+          const near = A.wake > 0 || A.dist == null ? 0 : A.dist <= 2 ? 140 : A.dist <= 5 ? 95 : 0;
           dreadTo(near);
           // things whisper in the dark
           if ((A.whisperIn -= dt) <= 0) {
@@ -1269,7 +1408,7 @@
           }
           ctx.stroke();
           // the dark: only a little light around you
-          const g = ctx.createRadialGradient(A.px, A.py, 16, A.px, A.py, 78);
+          const g = ctx.createRadialGradient(A.px, A.py, 18, A.px, A.py, 92);
           g.addColorStop(0, 'rgba(0,0,0,0)');
           g.addColorStop(1, 'rgba(0,0,0,0.985)');
           ctx.fillStyle = g;
