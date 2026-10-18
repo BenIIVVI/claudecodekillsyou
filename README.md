@@ -30,7 +30,8 @@
 
 ## Options
 
-- `http://localhost:5177/?demo` runs at a faster pace.
+- `http://localhost:5177/?short` is the quick cut for judging: three CAPTCHA stages, then the runner, the maze, the wall-breaker and the final battle.
+- `http://localhost:5177/?demo` runs the full version at a faster pace.
 - `http://localhost:5177/?stage=4` starts at a given stage (1–5).
 - `Shift+N` skips to the next CAPTCHA round.
 - `Shift+R` restarts.

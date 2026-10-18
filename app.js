@@ -9,7 +9,9 @@
   const $ = (id) => document.getElementById(id);
   // ?demo runs every scripted pause at 60% (and shortens the game's levels) for judging in a hurry
   const DEMO = new URLSearchParams(location.search).has('demo');
-  const PACE = DEMO ? 0.6 : 1;
+  // ?short is the quick cut: CAPTCHA stages 1, 3 and 5, pauses at 45%, and four game steps (runner, maze, wall, end)
+  const SHORT = new URLSearchParams(location.search).has('short');
+  const PACE = SHORT ? 0.45 : DEMO ? 0.6 : 1;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms * PACE));
   const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -282,7 +284,12 @@
   // and let renderRound's ripple fade the new ones in.
   async function swapTiles() {
     const canvases = S.tiles.map((t) => t.canvas);
-    if (G) await new Promise((r) => G.to(canvases, { opacity: 0, duration: 0.28, ease: 'power1.in', stagger: { each: 0.015, from: 'random' }, onComplete: r }));
+    // the timeout matters: GSAP runs on animation frames, which stop while the tab is hidden, and a tween
+    // that never completes would leave the round busy (Verify dead) for good
+    if (G) await new Promise((r) => {
+      G.to(canvases, { opacity: 0, duration: 0.28, ease: 'power1.in', stagger: { each: 0.015, from: 'random' }, onComplete: r });
+      setTimeout(r, 700);
+    });
     else await sleep(280);
     renderRound();
     await sleep(380);
@@ -308,7 +315,7 @@
     await sleep(500);
     Sound.whoosh();
     await loading((600 + S.stage * 200) * PACE);
-    S.stage++;
+    S.stage += SHORT && (S.stage === 1 || S.stage === 3) ? 2 : 1; // the short cut skips stages 2 and 4
     S.attempt = 0;
     S.rl = 0;
     applyStage();
@@ -1499,7 +1506,7 @@
     const game = window.Battle || window.Invaders; // Undertale-style battles; the shooter is the fallback
     if (game) {
       el.cursor.hidden = true; // the game has its own controls
-      S.game = await game.play({ audio: Sound.ctx, model: MODEL_NAME, name: S.first });
+      S.game = await game.play({ audio: Sound.ctx, model: MODEL_NAME, name: S.first, ...(SHORT ? { steps: [2, 4, 6, 10], short: true } : {}) });
       el.cursor.hidden = false;
       await glitchText(el.cbLabel, 'Please wait while we verify the other one.', 600);
     }
@@ -1718,6 +1725,7 @@
         else done();
       };
       requestAnimationFrame(frame);
+      setTimeout(done, DUR + 500); // animation frames pause in a hidden tab; the finale must still go on
     });
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, W, W);

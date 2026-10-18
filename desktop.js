@@ -303,7 +303,10 @@
         const nx = W * (0.1 + Math.random() * 0.8);
         const ny = H * (0.1 + Math.random() * 0.75);
         if (G) {
-          await new Promise((r) => G.to({ x, y }, { x: nx, y: ny, duration: 0.5 + Math.random() * 0.6, ease: 'power2.inOut', onUpdate() { cursor.style.transform = `translate(${this.targets()[0].x}px, ${this.targets()[0].y}px)`; }, onComplete: r }));
+          await new Promise((r) => {
+            G.to({ x, y }, { x: nx, y: ny, duration: 0.5 + Math.random() * 0.6, ease: 'power2.inOut', onUpdate() { cursor.style.transform = `translate(${this.targets()[0].x}px, ${this.targets()[0].y}px)`; }, onComplete: r });
+            setTimeout(r, 1400); // never hang if animation frames are paused
+          });
         } else {
           cursor.style.transform = `translate(${nx}px, ${ny}px)`;
           await sleep(600);

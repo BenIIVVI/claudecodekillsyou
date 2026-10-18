@@ -156,6 +156,9 @@
     };
 
     // the ACT that makes claude ready to be spared, per level (MERCY → Spare then wins peacefully)
+    // which steps this run plays, in order (the 2-minute cut plays only the runner and the end)
+    const SEQ = opts.steps && opts.steps.length ? opts.steps : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    const nextLevel = (n) => SEQ[SEQ.indexOf(n) + 1] || FINAL;
     const SPARE_ACT = { 1: 'Wave', 3: 'Scroll', 5: 'Plead', 7: 'Freeze', 8: 'Say name', 9: 'Admire' };
     // ITEMs, kept across battles (dying restores what you had when that battle began)
     const ITEMS = [
@@ -326,7 +329,7 @@
       S.route[S.level] = 'kill';
       narrate([`* YOU WON!\n* You earned 0 EXP and 0 GOLD.\n* ${MODEL} learned ${S.level * 10}% of you.`], () => {
         E.dying = 0;
-        startLevel(S.level + 1);
+        startLevel(nextLevel(S.level));
       });
     }
 
@@ -809,7 +812,7 @@
         maze: `* You found the way out.\n* ${MODEL} learned how you hide.`,
         breakout: `* Its eye shuts.\n* ${MODEL} learned how you aim.`,
       }[S.L.arcade];
-      narrate([msg], () => startLevel(S.level + 1));
+      narrate([msg], () => startLevel(nextLevel(S.level)));
     }
     function crack(x, y) {
       ctx.strokeStyle = '#000';
@@ -841,7 +844,7 @@
           A.coyote = 0;
           A.buf = 0;
           A.scroll = 0;
-          A.len = 4400;
+          A.len = opts.short ? 2600 : 4400;
           A.eye = 70; // its screen x; it catches you at A.px - 46
           A.obs = [];
           A.pits = [];
@@ -855,7 +858,7 @@
           while (x < A.len - 320) {
             const p = x / A.len;
             const t = R();
-            let gap = 140 + R() * 95 - 40 * p;
+            let gap = 165 + R() * 100 - 30 * p;
             if (t < 0.16) A.obs.push({ x, y: A.ground - 10, r: 10 });
             else if (t < 0.26) {
               // a stack of two, or three later on (hold the jump)
@@ -919,7 +922,7 @@
               x += w;
               gap += 40;
             }
-            x += Math.max(130, gap);
+            x += Math.max(155, gap);
           }
         },
         // nothing in the way for the next stretch? (it only spits when you could fairly jump it)
@@ -929,7 +932,7 @@
         },
         update(A, dt) {
           const p = A.scroll / A.len;
-          const speed = 270 + 110 * p;
+          const speed = 245 + 75 * p;
           A.scroll += speed * dt;
           const held = keys.arrowup || keys.w || keys[' '] || keys.z || !!pointer;
           if (A.jumpReq) {
@@ -979,7 +982,7 @@
               // ran into its side: it hurts, and you're lifted onto it so the run goes on
               if (!b.bumped) {
                 b.bumped = true;
-                if (soul.inv <= 0) trip(4, 55);
+                if (soul.inv <= 0) trip(4, 38);
               }
               land = land == null ? top : Math.min(land, top);
             }
@@ -1009,7 +1012,7 @@
           // fell in: it costs you, and it gets closer
           if (A.py > A.ground + 70) {
             soul.inv = 0;
-            trip(5, 65);
+            trip(5, 45);
             const q = A.pits.find((q) => wx > q.x - 20 && wx < q.x + q.w + 20);
             if (q) A.scroll = q.x + q.w + 16 - A.px;
             A.py = A.ground - 50;
@@ -1022,7 +1025,7 @@
             if (o.hit || sx < -30 || sx > VW + 30) continue;
             if (soul.inv <= 0 && Math.hypot(sx - A.px, o.y - A.py) < o.r + 6) {
               o.hit = true;
-              trip(4, 55);
+              trip(4, 38);
             }
           }
           // it spits sparks along the floor at your back (with a warning first)
@@ -1034,7 +1037,7 @@
                 snd.warn();
               }
             } else if ((A.spitIn -= dt) <= 0) {
-              A.spitIn = 2.2 + A.R() * 1.6 - p * 0.8;
+              A.spitIn = 3.4 + A.R() * 2 - p * 0.8;
               if (this.clear(A, wx + 10, wx + speed * 0.85)) A.spitWarn = 0.6;
               else A.spitIn = 0.25; // try again in a moment
             }
@@ -1043,13 +1046,13 @@
             s2.x += 230 * dt; // screen speed: it catches up with you from behind
             if (!s2.hit && soul.inv <= 0 && Math.hypot(s2.x - A.px, s2.y - A.py) < s2.r + 6) {
               s2.hit = true;
-              trip(4, 55);
+              trip(4, 38);
             }
           }
           A.spits = A.spits.filter((s2) => !s2.hit && s2.x < VW + 30);
           // it falls back slowly while you run clean (but never out of sight), and catches you if it reaches you
           A.lunge = Math.max(0, (A.lunge || 0) - dt);
-          A.eye = Math.max(70, A.eye - 4 * dt);
+          A.eye = Math.max(70, A.eye - 9 * dt);
           if (S.state === 'arcade' && A.eye > A.px - 46) {
             S.scare = 0.5;
             big('shriek');
@@ -1707,7 +1710,7 @@
       S.route[S.level] = 'spare';
       narrate([`* YOU WON!\n* You spared ${MODEL}. It lets you pass.\n* It will remember that you were kind.`], () => {
         E.dying = 0;
-        startLevel(S.level + 1);
+        startLevel(nextLevel(S.level));
       });
     }
     const onKey = (e) => {
@@ -2481,7 +2484,7 @@
       wrap.remove();
       resolve({
         level: S.level,
-        cleared: S.level - 1,
+        cleared: Math.max(0, SEQ.indexOf(S.level)),
         shots: S.fights,
         hits: Math.round(S.accSum),
         accuracy: S.fights ? Math.round((S.accSum / S.fights) * 100) : 0,
@@ -2489,13 +2492,13 @@
         spared: S.route.filter((r) => r === 'spare').length,
         killed: S.route.filter((r) => r === 'kill').length,
         seconds: Math.round((performance.now() - S.startT) / 1000),
-        score: (S.level - 1) * 100,
+        score: Math.max(0, SEQ.indexOf(S.level)) * 100,
       });
     }
     raf = requestAnimationFrame(frame);
     // developers only: ?battle=N starts at level N for testing (normal play always starts at 1)
     const dev = parseInt(new URLSearchParams(location.search).get('battle'), 10);
-    startLevel(dev >= 1 && dev <= FINAL ? dev : 1);
+    startLevel(dev >= 1 && dev <= FINAL ? dev : SEQ[0]);
     // with ?battle, tests can step the game clock directly (rendering pauses in background tabs)
     if (dev) window.__battle = { S, E, soul, keys, confirm, step: (dt) => { update(dt); draw(); }, bullets: () => bullets, arc: () => S.arc, startLevel, ARC };
     return done;
