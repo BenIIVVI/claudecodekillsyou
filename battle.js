@@ -498,7 +498,7 @@
       } },
       // the end: the box closes in, everything at once, and then there is no room left
       final: { dur: 99, init(a) { a.next = 0; a.k = 0; }, update(a, dt) {
-        a.k += dt * (opts.short ? 2.2 : 1); // the demo closes the box faster
+        a.k += dt * (opts.short || opts.fast ? 2.2 : 1); // the demo closes the box faster
         const w = Math.max(28, 200 - a.k * 26);
         setBox(w, Math.max(28, 160 - a.k * 20));
         a.next -= dt;
@@ -711,7 +711,8 @@
       S.clean = true;
       S.chip = 0;
       if (Music) Music.setIntensity(1);
-      S.attack = { p, t: 0, dur: p.dur };
+      // ?demo keeps every level near 10 seconds: shorter attacks
+      S.attack = { p, t: 0, dur: p.dur === 99 ? 99 : p.dur * (opts.fast ? 0.55 : 1) };
       // how hard it pushes: angrier at half HP, gentler once it's ready to be spared, and its own attack speeds up each time it repeats
       S.attack.heat = (S.enraged ? 1.1 : 1) * (S.spareable ? 0.75 : 1) * (p.gen ? 1 : 1 + Math.min(0.15, 0.05 * Math.floor((S.round - 1) / 2)));
       p.init(S.attack);
@@ -844,7 +845,7 @@
           A.coyote = 0;
           A.buf = 0;
           A.scroll = 0;
-          A.len = opts.short ? 2400 : 4400;
+          A.len = opts.short || opts.fast ? 2400 : 4400;
           A.eye = 70; // its screen x; it catches you at A.px - 46
           A.obs = [];
           A.pits = [];

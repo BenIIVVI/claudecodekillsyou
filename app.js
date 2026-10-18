@@ -1572,7 +1572,7 @@
     const game = window.Battle || window.Invaders; // Undertale-style battles; the shooter is the fallback
     if (game) {
       el.cursor.hidden = true; // the game has its own controls
-      S.game = await game.play({ audio: Sound.ctx, model: MODEL_NAME, name: S.first, ...(SHORT ? { steps: [2, 4, 10], short: true, auto: true } : {}) });
+      S.game = await game.play({ audio: Sound.ctx, model: MODEL_NAME, name: S.first, ...(SHORT ? { steps: [2, 4, 10], short: true, auto: true } : DEMO ? { fast: true } : {}) });
       el.cursor.hidden = false;
       await glitchText(el.cbLabel, 'Please wait while we verify the other one.', 600);
     }
