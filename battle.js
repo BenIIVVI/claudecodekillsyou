@@ -1190,11 +1190,11 @@
       maze: {
         init(A) {
           const R = A.R;
-          // small: 11 x 7 cells, wide corridors
-          const C = 11;
-          const Rw = 7;
-          const cs = 40;
-          Object.assign(A, { C, Rw, cs, ox: (VW - C * cs) / 2, oy: 48, got: 0 });
+          // small: 8 x 5 cells, wide corridors
+          const C = 8;
+          const Rw = 5;
+          const cs = 50;
+          Object.assign(A, { C, Rw, cs, ox: (VW - C * cs) / 2, oy: 60, got: 0 });
           const W = Array.from({ length: C }, () => Array.from({ length: Rw }, () => ({ n: 1, s: 1, e: 1, w: 1 })));
           const DIRS = [['n', 0, -1, 's'], ['s', 0, 1, 'n'], ['e', 1, 0, 'w'], ['w', -1, 0, 'e']];
           const seen = new Set(['0,0']);
@@ -1213,7 +1213,7 @@
             stack.push([c + dc, r + dr]);
           }
           // knock out a few extra walls: loops let you circle away from it
-          for (let i = 0; i < 10; i++) {
+          for (let i = 0; i < 6; i++) {
             const c = 1 + ((R() * (C - 2)) | 0);
             const r = 1 + ((R() * (Rw - 2)) | 0);
             const [d, dc, dr, back] = DIRS[(R() * 4) | 0];
@@ -1230,8 +1230,8 @@
           A.tiles = [];
           for (const cell of cells.slice(1).sort(() => R() - 0.5)) {
             if (A.tiles.length >= 3) break;
-            if (cell[2] < 5) continue;
-            if (A.tiles.every((t) => Math.abs(t[0] - cell[0]) + Math.abs(t[1] - cell[1]) >= 4) && Math.abs(A.exit[0] - cell[0]) + Math.abs(A.exit[1] - cell[1]) >= 3) A.tiles.push(cell);
+            if (cell[2] < 4) continue;
+            if (A.tiles.every((t) => Math.abs(t[0] - cell[0]) + Math.abs(t[1] - cell[1]) >= 3) && Math.abs(A.exit[0] - cell[0]) + Math.abs(A.exit[1] - cell[1]) >= 2) A.tiles.push(cell);
           }
           // never fewer than 3 tiles: if the spread-out rule couldn't place them all, relax it
           for (const cell of cells.slice(1)) {
@@ -1240,7 +1240,7 @@
           }
           A.px = A.ox + cs / 2;
           A.py = A.oy + cs / 2;
-          const far = cells.filter((c) => c[2] >= 7 && c !== A.exit);
+          const far = cells.filter((c) => c[2] >= 5 && c !== A.exit);
           const h = far[(R() * far.length) | 0] || cells[2];
           A.hx = A.ox + h[0] * cs + cs / 2;
           A.hy = A.oy + h[1] * cs + cs / 2;
@@ -1272,7 +1272,7 @@
         },
         // move one axis, stopping at walls; nudge toward the corridor's middle so corners don't snag
         move(A, dx, dy) {
-          const r = 6;
+          const r = 9; // about the size of the heart sprite, so it never overlaps a wall
           const [c, row] = this.cell(A, A.px, A.py);
           const w = A.W[c][row];
           const left = A.ox + c * A.cs;
@@ -1371,7 +1371,7 @@
               // it lets go, and slips away to somewhere far
               const { dist } = this.bfs(A, pc[0], pc[1]);
               const far = [];
-              for (let c = 0; c < A.C; c++) for (let r = 0; r < A.Rw; r++) if (dist[c][r] >= 6) far.push([c, r]);
+              for (let c = 0; c < A.C; c++) for (let r = 0; r < A.Rw; r++) if (dist[c][r] >= 4) far.push([c, r]);
               const h = far[(A.R() * far.length) | 0] || [A.C - 1, 0];
               A.hx = A.ox + h[0] * A.cs + A.cs / 2;
               A.hy = A.oy + h[1] * A.cs + A.cs / 2;
@@ -1379,7 +1379,7 @@
             }
           }
           // your heartbeat tells you how close it is
-          const near = A.wake > 0 || A.dist == null ? 0 : A.dist <= 2 ? 140 : A.dist <= 5 ? 95 : 0;
+          const near = A.wake > 0 || A.dist == null ? 0 : A.dist <= 1 ? 140 : A.dist <= 3 ? 95 : 0;
           dreadTo(near);
           // things whisper in the dark
           if ((A.whisperIn -= dt) <= 0) {
@@ -1408,7 +1408,7 @@
           }
           ctx.stroke();
           // the dark: only a little light around you
-          const g = ctx.createRadialGradient(A.px, A.py, 18, A.px, A.py, 92);
+          const g = ctx.createRadialGradient(A.px, A.py, 22, A.px, A.py, 110);
           g.addColorStop(0, 'rgba(0,0,0,0)');
           g.addColorStop(1, 'rgba(0,0,0,0.985)');
           ctx.fillStyle = g;
