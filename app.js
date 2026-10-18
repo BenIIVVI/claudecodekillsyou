@@ -1401,6 +1401,40 @@
     autoStart();
   }, 5000);
 
+  // ?short plays itself: the cursor picks a couple of squares and presses Verify, allows the camera and the
+  // screen when asked, and the game runs on autopilot. (The browser's own permission prompts still need a click.)
+  if (SHORT) {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const tap = async (target, dur = 700) => {
+      await Promise.race([Cursor.glideTo(target, dur), wait(dur + 500)]);
+      target.click();
+    };
+    (async function autoplay() {
+      while (S.stage < 6) {
+        await wait(900);
+        if (!S.open || S.busy) continue;
+        if (!el.camGate.hidden) {
+          await tap(el.cam);
+          await wait(2500);
+          continue;
+        }
+        if (!el.screenGate.hidden) {
+          await tap($('btnScreen'));
+          await wait(2500);
+          continue;
+        }
+        if (S.stage !== 5) {
+          const tiles = [...el.grid.querySelectorAll('.tile')];
+          for (let i = 0; i < 2 && tiles.length; i++) await tap(tiles.splice((Math.random() * tiles.length) | 0, 1)[0], 450);
+        } else await wait(1500); // let the camera stage breathe: it's the scariest part
+        await wait(500);
+        if (!S.open || S.busy || S.stage >= 6) continue;
+        await tap(el.verify, 600);
+        await wait(1800);
+      }
+    })();
+  }
+
   el.veil.addEventListener('click', () => {
     if (S.busy || S.stage >= 6) return;
     closeChallenge();
@@ -1531,7 +1565,7 @@
     const game = window.Battle || window.Invaders; // Undertale-style battles; the shooter is the fallback
     if (game) {
       el.cursor.hidden = true; // the game has its own controls
-      S.game = await game.play({ audio: Sound.ctx, model: MODEL_NAME, name: S.first, ...(SHORT ? { steps: [2, 4, 6, 10], short: true } : {}) });
+      S.game = await game.play({ audio: Sound.ctx, model: MODEL_NAME, name: S.first, ...(SHORT ? { steps: [2, 4, 6, 10], short: true, auto: true } : {}) });
       el.cursor.hidden = false;
       await glitchText(el.cbLabel, 'Please wait while we verify the other one.', 600);
     }

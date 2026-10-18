@@ -1310,10 +1310,22 @@
           }
         },
         update(A, dt) {
-          const sp = 112 * dt;
+          const sp = (opts.short ? 140 : 112) * dt;
           let mx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0);
           let my = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
-          if (pointer && !mx && !my) {
+          if (opts.short) {
+            // the quick cut plays the maze for you: follow the shortest path to the next tile, then the way out
+            const tgt = A.tiles.find((t) => !t.got) || A.exit;
+            const { dist } = this.bfs(A, tgt[0], tgt[1]);
+            const [c, r] = this.cell(A, A.px, A.py);
+            let best = [c, r];
+            for (const [d, dc, dr] of A.DIRS) if (!A.W[c][r][d] && dist[c + dc][r + dr] < dist[best[0]][best[1]]) best = [c + dc, r + dr];
+            const at = best[0] === c && best[1] === r ? tgt : best;
+            const tx = A.ox + at[0] * A.cs + A.cs / 2;
+            const ty = A.oy + at[1] * A.cs + A.cs / 2;
+            mx = Math.abs(tx - A.px) > 2 ? Math.sign(tx - A.px) : 0;
+            my = Math.abs(ty - A.py) > 2 ? Math.sign(ty - A.py) : 0;
+          } else if (pointer && !mx && !my) {
             const dx = pointer.x - A.px;
             const dy = pointer.y - A.py;
             if (Math.abs(dx) > 4) mx = Math.sign(dx);
@@ -1366,7 +1378,7 @@
               A.hx += ((tx - A.hx) / dd) * Math.min(hs, dd);
               A.hy += ((ty - A.hy) / dd) * Math.min(hs, dd);
             }
-            if (Math.hypot(A.hx - A.px, A.hy - A.py) < 15 && soul.inv <= 0) {
+            if (!opts.short && Math.hypot(A.hx - A.px, A.hy - A.py) < 15 && soul.inv <= 0) { // on autopilot it only stalks you
               hurt(6);
               S.scare = 0.4;
               big('shriek');
@@ -1782,7 +1794,84 @@
     addEventListener('touchend', onUp);
 
     // ---- update ----
+    // ?short autopilot: reads its own text, picks FIGHT, times the bar, and plays the arcade levels
+    function autopilot(dt) {
+      const since = S.t - (S.autoT || 0);
+      if (S.state === 'text' && S.shown >= S.text.length && since > 1.1) {
+        S.autoT = S.t;
+        confirm();
+      } else if (S.state === 'menu' && !S.sub && since > 0.9) {
+        S.autoT = S.t;
+        S.menu = 0;
+        confirm();
+      } else if (S.state === 'fight' && S.bar && !S.bar.done && Math.abs(S.bar.x - (TEXTBOX.x + TEXTBOX.w / 2)) < 14) strike();
+      const dirs = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
+      if (S.state === 'attack') {
+        // drift away from the nearest spark
+        let ax = 0;
+        let ay = 0;
+        for (const b of bullets) {
+          const d = Math.hypot(soul.x - b.x, soul.y - b.y);
+          if (d > 0 && d < 70) {
+            ax += (soul.x - b.x) / d / d;
+            ay += (soul.y - b.y) / d / d;
+          }
+        }
+        keys.arrowleft = ax < -0.004;
+        keys.arrowright = ax > 0.004;
+        keys.arrowup = ay < -0.004;
+        keys.arrowdown = ay > 0.004;
+        return;
+      }
+      const A = S.state === 'arcade' && S.arc;
+      if (!A) {
+        if (S.autoKeys) dirs.forEach((k) => (keys[k] = false));
+        S.autoKeys = false;
+        return;
+      }
+      S.autoKeys = true;
+      if (S.L.arcade === 'runner') {
+        const wx = A.scroll + A.px;
+        let want = false;
+        for (const o of A.obs) {
+          const d = o.x - wx;
+          if (o.hit || o.fly || d < 30 || d > 85) continue;
+          if (o.y < A.py - 30 && !o.bob) continue;
+          want = true;
+        }
+        for (const b of A.blocks) {
+          const d = b.x - wx;
+          if (d > 20 && d < 65 && A.ground - b.h < A.py + 6) want = true;
+        }
+        if (A.pits.some((q) => q.x - wx > 8 && q.x - wx < 40)) want = true;
+        if (A.spits.some((q) => A.px - q.x > 20 && A.px - q.x < 60)) want = true;
+        if (A.pads.some((d) => d.x - wx > -10 && d.x - wx < 90)) want = false; // let the pad do it
+        if (want && A.onGround) {
+          A.jumpReq = true;
+          A.autoHold = 0.3;
+        }
+        if (!A.onGround && A.orbs.some((o) => !o.used && Math.abs(o.x - wx) < 24 && Math.abs(o.y - A.py) < 40)) {
+          A.jumpReq = true;
+          A.autoHold = 0.3;
+        }
+        A.autoHold = (A.autoHold || 0) - dt;
+        keys.arrowup = A.autoHold > 0;
+      } else if (S.L.arcade === 'breakout') {
+        const b = A.ball;
+        if (b.stuck) A.jumpReq = true;
+        let target = b.x;
+        if (b.vy > 0 && b.y > 230) {
+          // aim: hit the ball off the side of the paddle that sends it toward the eye
+          const th = Math.atan2(A.eye.y - A.pad.y, A.eye.x - b.x);
+          target = b.x - clamp((th + Math.PI / 2) / 1.05, -0.9, 0.9) * (A.pad.w / 2);
+        }
+        keys.arrowright = target - A.pad.x > 5;
+        keys.arrowleft = target - A.pad.x < -5;
+      }
+      // the maze steers itself (see ARC.maze, opts.short)
+    }
     function update(dt) {
+      if (opts.auto) autopilot(dt);
       S.t += dt;
       S.shake = Math.max(0, S.shake - dt * 25);
       S.flash = Math.max(0, S.flash - dt * 2);
