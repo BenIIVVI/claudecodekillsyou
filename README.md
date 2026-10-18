@@ -30,7 +30,7 @@
 
 ## Options
 
-- `http://localhost:5177/?short` is the hands-free quick cut: it plays itself start to finish (three CAPTCHA stages, runner, maze, wall-breaker, final battle). Only the browser camera/screen prompts need a click.
+- `http://localhost:5177/?short` is the hands-free quick cut: it plays itself start to finish (three CAPTCHA stages, runner, maze, final battle). Only the browser camera/screen prompts need a click.
 - `http://localhost:5177/?demo` runs the full version at a faster pace.
 - `http://localhost:5177/?stage=4` starts at a given stage (1–5).
 - `Shift+N` skips to the next CAPTCHA round.
