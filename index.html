@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Register · Hacktoberfest 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=Inter:wght@400;500;600&family=Martian+Mono:wght@400;500&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=Press+Start+2P&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=15">
+</head>
+<body data-stage="0">
+  <main class="page">
+    <!-- The "product": an ordinary Hacktoberfest sign-up. The CAPTCHA is the whole project. -->
+    <section class="card" id="card">
+      <div class="brand"><span class="wordmark">HACKT<span class="slash-o">O</span>BERFEST</span><span class="yr">26</span></div>
+      <p class="kicker">October 2026 · In-person and online · Free</p>
+      <h1>Register for <em>Hacktoberfest</em></h1>
+      <p class="sub">AI belongs to everyone. Claim your spot and your swag.</p>
+      <label class="field"><span>Full name</span><input id="name" autocomplete="off" spellcheck="false"></label>
+      <label class="field"><span>Email</span><input id="email" type="email" autocomplete="off" spellcheck="false"></label>
+
+      <div class="captcha" id="captcha">
+        <button class="cb" id="cb" type="button" aria-label="I'm not a robot"></button>
+        <span class="cb-label" id="cbLabel">I'm not a robot</span>
+        <div class="cb-brand">
+          <!-- reCAPTCHA's three circling arrows, in Hacktoberfest colours, with a pumpkin in the middle -->
+          <svg class="cb-logo" viewBox="0 0 32 32" aria-hidden="true">
+            <g fill="none" stroke-width="4.2" stroke-linecap="butt">
+              <path d="M6.47 10.5A11 11 0 0 1 23.07 7.57" stroke="#ff7a1a"/>
+              <path d="M6.47 10.5A11 11 0 0 1 23.07 7.57" stroke="#7b5cff" transform="rotate(120 16 16)"/>
+              <path d="M6.47 10.5A11 11 0 0 1 23.07 7.57" stroke="#2bd67b" transform="rotate(240 16 16)"/>
+            </g>
+            <path d="M26.13 10.14 25.38 4.81 20.76 10.33Z" fill="#ff7a1a"/>
+            <path d="M26.13 10.14 25.38 4.81 20.76 10.33Z" fill="#7b5cff" transform="rotate(120 16 16)"/>
+            <path d="M26.13 10.14 25.38 4.81 20.76 10.33Z" fill="#2bd67b" transform="rotate(240 16 16)"/>
+            <ellipse cx="16" cy="17" rx="4.2" ry="3.4" fill="#ff7a1a"/>
+            <path d="M14.6 14.4c0-.9.4-1.6 1.1-2" stroke="#1f7a3a" stroke-width="1.2" fill="none"/>
+            <path d="M14.2 16.6h1.2l-.6-.9zM16.8 16.6H18l-.6-.9zM14.4 18.2c1 .8 2.2.8 3.2 0" fill="#3a1500" stroke="#3a1500" stroke-width=".6"/>
+          </svg>
+          <div class="cb-name">reCAPTCHA</div>
+          <div class="cb-links"><a>Privacy</a> - <a>Terms</a></div>
+        </div>
+      </div>
+
+      <button class="primary" id="continue" type="button" disabled>Register</button>
+    </section>
+
+    <section class="card done" id="done" hidden>
+      <div class="brand"><span class="wordmark">HACKT<span class="slash-o">O</span>BERFEST</span><span class="yr">26</span></div>
+      <h1>Welcome back.</h1>
+      <p class="sub">2 hackers are registered on this device.</p>
+      <ul class="sessions">
+        <li>
+          <span class="avatar" id="av1">?</span>
+          <div><b id="doneName">You</b><small>Unverified · this tab</small></div>
+        </li>
+        <li>
+          <button class="avatar photo" id="av2btn" type="button" title="View photo"><canvas id="av2" width="480" height="480"></canvas></button>
+          <div><b id="doneName2">You</b><small>Verified human ✓ · active now</small></div>
+        </li>
+      </ul>
+      <p class="done-note" id="doneNote"></p>
+    </section>
+  </main>
+
+  <div class="veil" id="veil" hidden></div>
+
+  <!-- the model training on you, shown in the finale -->
+  <pre class="trainlog" id="trainLog" hidden></pre>
+
+  <div class="jump" id="jump" hidden><canvas id="jumpCanvas" width="480" height="480"></canvas></div>
+
+  <div class="challenge" id="challenge" hidden>
+    <div class="ch-arrow" id="chArrow"></div>
+    <div class="ch-head">
+      <div class="ch-small" id="chPre"></div>
+      <div class="ch-big" id="chKey"></div>
+      <div class="ch-small" id="chPost"></div>
+    </div>
+    <div class="ch-body">
+      <div class="grid" id="grid"></div>
+
+      <div class="ch-audio" id="audioPanel" hidden>
+        <button class="play" id="btnPlay" type="button">&#9654;&nbsp; PLAY</button>
+        <label>Enter what you hear<input id="audioIn" autocomplete="off" spellcheck="false"></label>
+      </div>
+
+      <div class="ch-cam" id="camGate" hidden>
+        <svg viewBox="0 0 24 24" width="44" height="44" aria-hidden="true"><path fill="currentColor" d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+        <p>Look at the camera.</p>
+        <button type="button" id="btnCam">Allow camera</button>
+      </div>
+
+      <div class="ch-cam" id="screenGate" hidden>
+        <svg viewBox="0 0 24 24" width="44" height="44" aria-hidden="true"><path fill="currentColor" d="M20 3H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h6v2H8v2h8v-2h-2v-2h6a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 13H4V5h16v11z"/></svg>
+        <p>Share your screen to finish verifying.<br><small>Choose &ldquo;Entire screen&rdquo;.</small></p>
+        <button type="button" id="btnScreen">Share screen</button>
+      </div>
+
+      <div class="ch-loading" id="chLoading" hidden><span class="spinner"></span></div>
+    </div>
+    <div class="ch-msg" id="chMsg"></div>
+    <div class="ch-foot">
+      <div class="ch-tools">
+        <button type="button" id="btnReload" title="Get a new challenge">
+          <svg viewBox="0 0 24 24"><path fill="currentColor" d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+        </button>
+        <button type="button" id="btnAudio" title="Get an audio challenge">
+          <svg viewBox="0 0 24 24" id="icoAudio"><path fill="currentColor" d="M12 3a9 9 0 0 0-9 9v7a2 2 0 0 0 2 2h2a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1H5v-1a7 7 0 0 1 14 0v1h-2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2a2 2 0 0 0 2-2v-7a9 9 0 0 0-9-9z"/></svg>
+          <svg viewBox="0 0 24 24" id="icoImage" hidden><path fill="currentColor" d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z"/></svg>
+        </button>
+        <button type="button" id="btnInfo" title="Help">
+          <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+        </button>
+      </div>
+      <span class="ch-train" id="chTrain"></span>
+      <button class="verify" id="btnVerify" type="button">Verify</button>
+    </div>
+    <div class="ch-info" id="chInfo" hidden></div>
+  </div>
+
+  <div class="fake-cursor" id="fakeCursor" hidden>
+    <svg viewBox="0 0 16 24" width="16" height="24"><path d="M1 1 L1 18 L5.2 14 L8.2 21 L11 19.8 L8.1 13 L13.6 13 Z" fill="#000" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>
+  </div>
+
+  <!-- camcorder grain and scanlines over everything, heavier each stage -->
+  <div class="vhs" id="vhs"></div>
+  <div class="vhs-band" id="vhsBand"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrambleTextPlugin.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/CustomEase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/CustomWiggle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/powerglitch@2.4.0/dist/powerglitch.min.js"></script>
+  <script src="art.js?v=15"></script>
+  <script src="sound.js?v=15"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.js"></script>
+  <script src="music.js?v=15"></script>
+  <script src="warp.js?v=15"></script>
+  <script src="game.js?v=15"></script>
+  <script src="battle.js?v=15"></script>
+  <script src="desktop.js?v=15"></script>
+  <script src="app.js?v=15"></script>
+</body>
+</html>
