@@ -319,6 +319,8 @@
     S.attempt = 0;
     S.rl = 0;
     applyStage();
+    el.msg.textContent = ''; // a new stage starts clean: no leftover "Please try again."
+    el.msg.className = 'ch-msg';
     renderRound();
     if (msg) note(msg);
   }
@@ -1410,9 +1412,17 @@
       target.click();
     };
     (async function autoplay() {
+      let seen = '';
       while (S.stage < 6) {
-        await wait(900);
+        await wait(600);
         if (!S.open || S.busy) continue;
+        // a new stage or round: give the viewer a couple of seconds to read it first
+        const now = `${S.stage}|${S.attempt}`;
+        if (now !== seen) {
+          seen = now;
+          await wait(2200);
+          if (!S.open || S.busy) continue;
+        }
         if (!el.camGate.hidden) {
           await tap(el.cam);
           await wait(2500);
@@ -1425,20 +1435,17 @@
         }
         if (S.stage !== 5) {
           const tiles = [...el.grid.querySelectorAll('.tile')];
-          for (let i = 0; i < 2 && tiles.length; i++) await tap(tiles.splice((Math.random() * tiles.length) | 0, 1)[0], 450);
+          for (let i = 0; i < 2 && tiles.length; i++) await tap(tiles.splice((Math.random() * tiles.length) | 0, 1)[0], 750);
         } else await wait(1500); // let the camera stage breathe: it's the scariest part
         await wait(500);
         if (!S.open || S.busy || S.stage >= 6) continue;
-        await tap(el.verify, 600);
-        await wait(1800);
+        await tap(el.verify, 900);
+        await wait(2200);
       }
     })();
   }
 
-  el.veil.addEventListener('click', () => {
-    if (S.busy || S.stage >= 6) return;
-    closeChallenge();
-  });
+  // once the CAPTCHA is up it stays up: clicking outside it does nothing (only the finale takes it away)
 
   el.verify.addEventListener('click', async () => {
     if (S.busy || !S.open) return;
