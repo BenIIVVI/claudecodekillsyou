@@ -829,47 +829,72 @@
     const WHISPERS = () => ['turn around', NAME.toLowerCase(), 'it hears you', "don't look", 'left', 'closer', 'we see you'];
 
     const ARC = {
-      // RUN: an endless-runner course built from a seed; claude's eye follows, and gets closer every time you trip
+      // RUN: a runner course built from a seed. claude rolls after you, always in view, and gets closer every time you trip.
       runner: {
         init(A) {
           const R = A.R;
           A.ground = 330;
-          A.px = 150;
+          A.px = 250; // room behind you, so you can see it coming
           A.py = A.ground - 8;
           A.vy = 0;
           A.onGround = true;
           A.coyote = 0;
           A.buf = 0;
           A.scroll = 0;
-          A.len = 3600;
-          A.eye = -110;
+          A.len = 4400;
+          A.eye = 70; // its screen x; it catches you at A.px - 46
           A.obs = [];
           A.pits = [];
+          A.spits = [];
+          A.spitIn = 2;
           A.racks = Array.from({ length: 26 }, (_, i) => ({ x: i * 90 + R() * 40, w: 40 + R() * 40, h: 60 + R() * 120 }));
-          let x = 560;
-          while (x < A.len - 260) {
+          let x = 620;
+          while (x < A.len - 320) {
             const p = x / A.len;
             const t = R();
-            if (t < 0.3) A.obs.push({ x, y: A.ground - 10, r: 10 });
-            else if (t < 0.46) {
-              A.obs.push({ x, y: A.ground - 10, r: 10 });
-              A.obs.push({ x, y: A.ground - 31, r: 10 });
-            } else if (t < 0.7) {
-              const w = 55 + R() * (35 + 30 * p);
+            let gap = 140 + R() * 95 - 40 * p;
+            if (t < 0.22) A.obs.push({ x, y: A.ground - 10, r: 10 });
+            else if (t < 0.36) {
+              // a stack of two, or three later on (hold the jump)
+              const n = p > 0.35 && R() < 0.5 ? 3 : 2;
+              for (let i = 0; i < n; i++) A.obs.push({ x, y: A.ground - 10 - i * 21, r: 10 });
+            } else if (t < 0.56) {
+              const w = 60 + R() * (45 + 55 * p);
               A.pits.push({ x, w });
               x += w;
-            } else if (t < 0.85) A.obs.push({ x, y: A.ground - 54, r: 9, fly: true });
-            else {
+            } else if (t < 0.68) {
+              // a low flier: don't jump into it
+              A.obs.push({ x, y: A.ground - 54, r: 9, fly: true });
+              gap += 90;
+            } else if (t < 0.8) {
+              // a spark that bobs up and down: time it
+              A.obs.push({ x, y: A.ground - 40, r: 10, bob: { base: A.ground - 40, amp: 30, ph: R() * 6.28 } });
+              gap += 60;
+            } else if (t < 0.9) {
+              // a long one: jump early
               A.obs.push({ x, y: A.ground - 10, r: 10 });
               A.obs.push({ x: x + 34, y: A.ground - 10, r: 10 });
-              x += 34;
+              A.obs.push({ x: x + 68, y: A.ground - 10, r: 10 });
+              x += 68;
+            } else {
+              // a pit with a spark right after it
+              const w = 55 + R() * 35;
+              A.pits.push({ x, w });
+              A.obs.push({ x: x + w + 95, y: A.ground - 10, r: 10 });
+              x += w + 95;
+              gap += 40;
             }
-            x += 210 + R() * 130 - 40 * p;
+            x += Math.max(130, gap);
           }
+        },
+        // nothing in the way for the next stretch? (it only spits when you could fairly jump it)
+        clear(A, from, to) {
+          return !A.obs.some((o) => o.x > from && o.x < to) && !A.pits.some((q) => q.x + q.w > from && q.x < to);
         },
         update(A, dt) {
           const p = A.scroll / A.len;
-          A.scroll += (220 + 60 * p) * dt;
+          const speed = 270 + 110 * p;
+          A.scroll += speed * dt;
           const held = keys.arrowup || keys.w || keys[' '] || keys.z || !!pointer;
           if (A.jumpReq) {
             A.buf = 0.13;
@@ -878,7 +903,7 @@
           A.buf = Math.max(0, A.buf - dt);
           A.coyote = A.onGround ? 0.09 : Math.max(0, A.coyote - dt);
           if (A.buf > 0 && (A.onGround || A.coyote > 0)) {
-            A.vy = -560;
+            A.vy = -575;
             A.onGround = false;
             A.coyote = 0;
             A.buf = 0;
@@ -896,11 +921,15 @@
           } else A.onGround = false;
           soul.x = A.px;
           soul.y = A.py;
-          // fell in: it costs you, and the eye gets closer
+          const trip = (dmg, push) => {
+            hurt(dmg);
+            A.eye += push;
+            A.lunge = 0.35;
+          };
+          // fell in: it costs you, and it gets closer
           if (A.py > A.ground + 70) {
             soul.inv = 0;
-            hurt(5);
-            A.eye += 40;
+            trip(5, 65);
             const q = A.pits.find((q) => wx > q.x - 20 && wx < q.x + q.w + 20);
             if (q) A.scroll = q.x + q.w + 16 - A.px;
             A.py = A.ground - 50;
@@ -908,16 +937,39 @@
             soul.inv = 1.1;
           }
           for (const o of A.obs) {
+            if (o.bob) o.y = o.bob.base + Math.sin(S.t * 3 + o.bob.ph) * o.bob.amp;
             const sx = o.x - A.scroll;
             if (o.hit || sx < -30 || sx > VW + 30) continue;
             if (soul.inv <= 0 && Math.hypot(sx - A.px, o.y - A.py) < o.r + 6) {
               o.hit = true;
-              hurt(4);
-              A.eye += 35;
+              trip(4, 55);
             }
           }
-          // it falls back slowly while you run clean, and catches you if it reaches you
-          A.eye = Math.max(-110, A.eye - 10 * dt);
+          // it spits sparks along the floor at your back (with a warning first)
+          if (p > 0.1 && p < 0.92) {
+            if (A.spitWarn > 0) {
+              A.spitWarn -= dt;
+              if (A.spitWarn <= 0) {
+                A.spits.push({ x: A.eye + 40, y: A.ground - 10, r: 10 });
+                snd.warn();
+              }
+            } else if ((A.spitIn -= dt) <= 0) {
+              A.spitIn = 2.2 + A.R() * 1.6 - p * 0.8;
+              if (this.clear(A, wx + 10, wx + speed * 0.85)) A.spitWarn = 0.6;
+              else A.spitIn = 0.25; // try again in a moment
+            }
+          }
+          for (const s2 of A.spits) {
+            s2.x += 230 * dt; // screen speed: it catches up with you from behind
+            if (!s2.hit && soul.inv <= 0 && Math.hypot(s2.x - A.px, s2.y - A.py) < s2.r + 6) {
+              s2.hit = true;
+              trip(4, 55);
+            }
+          }
+          A.spits = A.spits.filter((s2) => !s2.hit && s2.x < VW + 30);
+          // it falls back slowly while you run clean (but never out of sight), and catches you if it reaches you
+          A.lunge = Math.max(0, (A.lunge || 0) - dt);
+          A.eye = Math.max(70, A.eye - 4 * dt);
           if (S.state === 'arcade' && A.eye > A.px - 46) {
             S.scare = 0.5;
             big('shriek');
@@ -956,6 +1008,7 @@
             const sx = o.x - A.scroll;
             if (!o.hit && sx > -30 && sx < VW + 30) drawSpark(sx, o.y, o.r, clamp((A.px - sx) / 120, -1, 1));
           }
+          for (const s2 of A.spits) drawSpark(s2.x, s2.y, s2.r, 1);
           // the finish: a checkbox
           const fx = A.len - A.scroll;
           if (fx < VW + 40) {
@@ -969,14 +1022,27 @@
             ctx.fillRect(fx + 20, A.ground - 66, 4, 66);
           }
           playerHeart(A.px, A.py);
-          // the eye behind you
-          const close = clamp((A.eye + 110) / (A.px + 64), 0, 1);
-          const g = ctx.createLinearGradient(0, 0, 260, 0);
-          g.addColorStop(0, `rgba(150,0,0,${0.2 + close * 0.55})`);
+          // claude, rolling after you: in view the whole time, bigger and redder as it closes in
+          const close = clamp((A.eye - 70) / (A.px - 46 - 70), 0, 1);
+          const g = ctx.createLinearGradient(0, 0, A.eye + 120, 0);
+          g.addColorStop(0, `rgba(150,0,0,${0.25 + close * 0.5})`);
           g.addColorStop(1, 'rgba(150,0,0,0)');
           ctx.fillStyle = g;
-          ctx.fillRect(0, 0, 260, VH);
-          if (Art) Art.drawEvilSpark(ctx, A.eye + Math.sin(S.t * 30) * close * 4, A.ground - 110, 300, { look: 1, rotate: S.t * 0.5 });
+          ctx.fillRect(0, 0, A.eye + 120, VH);
+          const size = 130 + close * 60 + (A.lunge > 0 ? 25 : 0);
+          const bounce = Math.abs(Math.sin(S.t * 7)) * 10;
+          const ex = A.eye + (A.lunge > 0 ? 10 : 0) + Math.sin(S.t * 40) * close * 3;
+          const ey = A.ground - size * 0.38 - bounce;
+          // its shadow and the trail it leaves
+          ctx.fillStyle = 'rgba(0,0,0,0.5)';
+          ctx.beginPath();
+          ctx.ellipse(ex, A.ground + 2, size * 0.32, 5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(217,119,87,0.25)';
+          for (let i = 1; i < 5; i++) ctx.fillRect(ex - size * 0.3 - i * 18, A.ground - 3 - ((S.t * 60 + i * 7) % 6), 8, 3);
+          if (Art) Art.drawEvilSpark(ctx, ex, ey, size, { look: 1, rotate: A.scroll / 45 });
+          // about to spit
+          if (A.spitWarn > 0 && Math.floor(S.t * 12) % 2) txt('!', ex + size * 0.35, ey - size * 0.5, 18, RED, 'center');
           if (close > 0.6 && Math.floor(S.t * 6) % 2) txt("IT'S RIGHT BEHIND YOU", VW / 2, 48, 12, RED, 'center');
           // progress
           ctx.fillStyle = '#333';
